@@ -1,1 +1,20 @@
-~$*
+# --- SECURITE ---
+# Ne jamais envoyer les clés privées sur GitHub
+*.key
+*.pem
+.env
+
+# --- PYTHON ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- JAVASCRIPT / NODE ---
+node_modules/
+npm-debug.log*
+
+# --- FICHIERS TEMPORAIRES ---
+*.log
+*.tmp
+*.archipel
+~$* # Pour ignorer les fichiers temporaires Word/Office
