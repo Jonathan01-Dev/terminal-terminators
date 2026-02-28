@@ -1,33 +1,38 @@
 import socket
 import threading
-from src.network.protocol import receive_tlv, format_tlv, MSG_PING, MSG_PONG, MSG_TEXT
+from src.network.protocol import receive_tlv, MSG_TEXT
+from src.security.handshake import HandshakeManager
+from src.security.encryption import ArchipelEncryption
+
+security_mgr = HandshakeManager()
 
 def handle_client(conn, addr):
-    print(f"🧵 [THREAD START] Connexion : {addr}")
-    try:
-        while True:
-            msg_type, value = receive_tlv(conn)
-            if msg_type is None: break
-                
-            if msg_type == MSG_PING:
-                print(f"💓 PING de {addr} -> Réponse PONG")
-                conn.sendall(format_tlv(MSG_PONG, b"PONG"))
-            elif msg_type == MSG_TEXT:
-                print(f"📩 Message de {addr}: {value.decode()}")
-                conn.sendall(format_tlv(MSG_TEXT, b"ACK"))
-    finally:
-        conn.close()
-        print(f"🔌 [THREAD END] Déconnexion : {addr}")
+    print(f"🤝 Handshake avec Alice ({addr})...")
+    session_key = security_mgr.do_server_handshake(conn)
+    
+    if session_key:
+        crypto = ArchipelEncryption(session_key)
+        print(f"🔒 Tunnel sécurisé établi.")
+        
+        try:
+            m_type, encrypted_value = receive_tlv(conn)
+            if m_type == MSG_TEXT:
+                # Déchiffrement
+                plain_text = crypto.decrypt_data(encrypted_value)
+                print(f"✅ Message déchiffré de Bob : {plain_text.decode()}")
+        except Exception as e:
+            print(f"❌ Erreur de déchiffrement : {e}")
+        finally:
+            conn.close()
 
-def start_tcp_server(port=5050):
+def start_bob_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(('0.0.0.0', port))
+    server.bind(('0.0.0.0', 5050))
     server.listen(5)
-    print(f"📦 Serveur Archipel actif sur le port {port}...")
+    print("👤 Bob (Serveur) attend le message d'Alice...")
     while True:
         conn, addr = server.accept()
-        threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
+        threading.Thread(target=handle_client, args=(conn, addr)).start()
 
 if __name__ == "__main__":
-    start_tcp_server()
+    start_bob_server()

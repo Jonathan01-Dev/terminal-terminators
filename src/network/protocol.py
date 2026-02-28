@@ -6,6 +6,12 @@ MSG_PONG = 1
 MSG_TEXT = 2
 MSG_FILE = 3
 
+# --- Types de messages Handshake ---
+MSG_HELLO = 4
+MSG_PUB_KEY = 5
+MSG_SESSION_KEY = 6
+MSG_HANDSHAKE_READY = 7
+
 def format_tlv(msg_type, data_bytes):
     """Prépare un paquet : [Type (1 octet)][Taille (4 octets)][Données]"""
     # !BI : Network Byte Order, 1 octet non signé, 4 octets non signés
