@@ -1,0 +1,13 @@
+# Sécurité et Chiffrement
+cryptography==42.0.0
+
+# API Gemini et Requêtes HTTP
+google-generativeai==0.3.2
+requests==2.31.0
+
+# Interface et Formatage Terminal
+colorama==0.4.6
+tabulate==0.9.0
+
+# Utilitaires
+python-dotenv==1.0.0

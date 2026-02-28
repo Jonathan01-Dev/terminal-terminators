@@ -2,53 +2,74 @@ import socket
 import json
 import time
 import threading
+from colorama import Fore, Style
 
+# Paramètres réseau
 MULTICAST_GROUP = '224.0.0.1'
 MULTICAST_PORT = 6000
 
+# Table globale : { "IP:Port": Timestamp_Dernière_Vue }
+PEER_TABLE = {}
+
 def start_discovery(my_tcp_port):
-    """
-    Diffuse la présence du nœud et écoute les autres.
-    """
-    # 1. Socket pour l'ÉCOUTE (UDP Multicast)
+    """Initialise la découverte automatique (Multicast)"""
+    
+    # Configuration du socket d'écoute
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('', MULTICAST_PORT))
     
-    # Rejoindre le groupe multicast
+    try:
+        sock.bind(('', MULTICAST_PORT))
+    except Exception as e:
+        print(f"⚠️ Erreur UDP Bind: {e}")
+        return
+
+    # Rejoindre le groupe Multicast
     mreq = socket.inet_aton(MULTICAST_GROUP) + socket.inet_aton('0.0.0.0')
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-    # 2. Fonction interne pour la DIFFUSION
     def broadcast_presence():
-        broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        broadcast_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
-        
+        """Dit 'Je suis là' toutes les 5 secondes"""
+        b_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        b_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
         while True:
-            message = json.dumps({"port": my_tcp_port, "status": "online"}).encode()
-            broadcast_sock.sendto(message, (MULTICAST_GROUP, MULTICAST_PORT))
+            try:
+                msg = json.dumps({"port": my_tcp_port}).encode()
+                b_sock.sendto(msg, (MULTICAST_GROUP, MULTICAST_PORT))
+            except: pass
             time.sleep(5)
 
-    # Lancer le thread de diffusion
+    def listen_for_peers():
+        """Écoute et met à jour la Peer Table"""
+        while True:
+            try:
+                data, addr = sock.recvfrom(1024)
+                info = json.loads(data.decode())
+                peer_id = f"{addr[0]}:{info['port']}"
+                
+                # Filtrer soi-même (Simple vérification de port si localhost)
+                if not (addr[0] == '127.0.0.1' and info['port'] == my_tcp_port):
+                    PEER_TABLE[peer_id] = time.time()
+            except: pass
+
+    # Lancement des processus en arrière-plan
     threading.Thread(target=broadcast_presence, daemon=True).start()
+    threading.Thread(target=listen_for_peers, daemon=True).start()
 
-    print(f"📡 Nœud actif (TCP Port {my_tcp_port}). Écoute des pairs...")
+def get_formatted_peers_data():
+    """Prépare les données pour le tableau CLI"""
+    now = time.time()
+    rows = []
     
-    # 3. Boucle d'écoute des autres nœuds
-    peers = set()
-    while True:
-        data, addr = sock.recvfrom(1024)
-        info = json.loads(data.decode())
-        peer_id = f"{addr[0]}:{info['port']}"
+    for peer_id, last_seen in PEER_TABLE.items():
+        delay = int(now - last_seen)
         
-        # On ne s'ajoute pas soi-même
-        if info['port'] != my_tcp_port:
-            if peer_id not in peers:
-                peers.add(peer_id)
-                print(f"✨ Nouveau pair détecté ! -> {peer_id} | Total : {len(peers)}")
-
-if __name__ == "__main__":
-    # Permet de tester en lançant : python discovery.py [PORT]
-    import sys
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 5050
-    start_discovery(port)
+        # Statut visuel
+        if delay < 15:
+            status = f"{Fore.GREEN}● Online{Style.RESET_ALL}"
+        else:
+            status = f"{Fore.RED}○ Offline{Style.RESET_ALL}"
+            
+        rows.append([peer_id, status, f"{delay}s ago", "AES-256-GCM"])
+    
+    return rows

@@ -1,37 +1,52 @@
-import struct
+# ==========================================
+# TYPES DE MESSAGES ARCHIPEL (Full Compatibility)
+# ==========================================
 
-# Constantes de type
-MSG_PING = 0
-MSG_PONG = 1
-MSG_TEXT = 2
-MSG_FILE = 3
+# 1. Handshake & Sécurité
+MSG_HELLO           = 0x00
+MSG_PUB_KEY         = 0x01
+MSG_SESSION_KEY     = 0x02
+MSG_HANDSHAKE_READY = 0x06  # <--- C'est celle-ci qui te manquait !
 
-# --- Types de messages Handshake ---
-MSG_HELLO = 4
-MSG_PUB_KEY = 5
-MSG_SESSION_KEY = 6
-MSG_HANDSHAKE_READY = 7
+# 2. Transfert de Fichiers
+MSG_FILE_CHUNK      = 0x03
+MSG_MANIFEST        = 0x04
 
-def format_tlv(msg_type, data_bytes):
-    """Prépare un paquet : [Type (1 octet)][Taille (4 octets)][Données]"""
-    # !BI : Network Byte Order, 1 octet non signé, 4 octets non signés
-    header = struct.pack('!BI', msg_type, len(data_bytes))
-    return header + data_bytes
+# 3. Messagerie
+MSG_CHAT_TEXT       = 0x05
+
+# --- ALIAS DE COMPATIBILITÉ (Au cas où) ---
+MSG_KEY_EXCHANGE    = MSG_SESSION_KEY
+
+# ==========================================
+# FONCTIONS DE TRANSPORT TLV
+# ==========================================
+
+def format_tlv(m_type, value):
+    """Encapsule : [Type:1 octet][Length:4 octets][Value]"""
+    length = len(value)
+    return m_type.to_bytes(1, 'big') + length.to_bytes(4, 'big') + value
 
 def receive_tlv(sock):
-    """Lit un paquet TLV complet sur le réseau"""
+    """Lit un message complet au format TLV"""
     try:
-        header = sock.recv(5)
-        if not header or len(header) < 5:
-            return None, None
+        # Lecture du Type
+        type_data = sock.recv(1)
+        if not type_data: return None, None
+        m_type = int.from_bytes(type_data, 'big')
         
-        msg_type, length = struct.unpack('!BI', header)
+        # Lecture de la Longueur
+        len_data = sock.recv(4)
+        if not len_data: return None, None
+        length = int.from_bytes(len_data, 'big')
         
+        # Lecture de la Valeur
         value = b''
         while len(value) < length:
             chunk = sock.recv(min(length - len(value), 4096))
             if not chunk: break
             value += chunk
-        return msg_type, value
-    except:
+            
+        return m_type, value
+    except Exception:
         return None, None
