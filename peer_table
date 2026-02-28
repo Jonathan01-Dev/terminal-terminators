@@ -1,0 +1,67 @@
+import time
+import threading
+
+# Dictionnaire pour stocker les pairs
+peer_table = {}
+
+# Temps avant suppression automatique (en secondes)
+TIMEOUT = 90
+
+# Ajouter ou mettre à jour un pair
+def upsert(node_id, ip):
+    peer_table[node_id] = {
+        "ip": ip,
+        "last_hello": time.time()  # timestamp du dernier HELLO
+    }
+    print(f"✅ Pair {node_id} ajouté/mis à jour.")
+
+# Supprimer les pairs inactifs depuis plus de timeout secondes
+def clean_timeout(timeout=TIMEOUT):
+    now = time.time()
+    to_delete = []
+    for node_id, data in peer_table.items():
+        if now - data['last_hello'] > timeout:
+            to_delete.append(node_id)
+    for node_id in to_delete:
+        del peer_table[node_id]
+        print(f"❌ Pair {node_id} supprimé (timeout)")
+
+# Affichage propre des pairs
+def show_peers():
+    if not peer_table:
+        print("Aucun pair connecté.")
+        return
+    print("Pairs actuellement connectés :")
+    for node_id, data in peer_table.items():
+        secs = int(time.time() - data['last_hello'])
+        print(f"- {node_id} @ {data['ip']} (dernier HELLO : {secs} sec)")
+
+# Thread pour nettoyage automatique
+def auto_clean():
+    while True:
+        time.sleep(5)  # vérifie toutes les 5 secondes
+        clean_timeout()
+
+# CLI minimal
+def main():
+    print("Bienvenue dans Peer Table CLI !")
+    print("Commandes : upsert <node_id> <ip>, peers, exit")
+
+    # Lancer le thread pour nettoyage automatique
+    threading.Thread(target=auto_clean, daemon=True).start()
+
+    while True:
+        cmd = input(">> ").strip().split()
+        if not cmd:
+            continue
+        if cmd[0] == "exit":
+            break
+        elif cmd[0] == "upsert" and len(cmd) == 3:
+            upsert(cmd[1], cmd[2])
+        elif cmd[0] == "peers":
+            show_peers()
+        else:
+            print("Commande inconnue !")
+
+if __name__ == "__main__":
+    main()
