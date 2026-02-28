@@ -1,0 +1,63 @@
+import json
+import os
+from cryptography.hazmat.primitives import serialization
+
+TRUSTED_FILE = "trusted_peers.json"
+
+
+def load_trusted_peers():
+    if not os.path.exists(TRUSTED_FILE):
+        return {}
+    with open(TRUSTED_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_trusted_peers(data):
+    with open(TRUSTED_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+def public_key_to_pem_string(public_key):
+    pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    return pem.decode("utf-8")
+
+
+def verify_or_save_peer(peer_id, received_public_key):
+    """
+    Vérifie la clé d’un pair avec TOFU.
+    - Première connexion → sauvegarde
+    - Connexion suivante → compare
+    - Si différente → alerte MITM
+    """
+
+    trusted_peers = load_trusted_peers()
+    received_pem = public_key_to_pem_string(received_public_key)
+
+    if peer_id not in trusted_peers:
+        print(f"🔐 Première connexion avec {peer_id}")
+        trusted_peers[peer_id] = received_pem
+        save_trusted_peers(trusted_peers)
+        print("✅ Clé publique enregistrée (TOFU).")
+        return True
+
+    # Vérification clé existante
+    if trusted_peers[peer_id] == received_pem:
+        print("✅ Clé vérifiée. Connexion sécurisée.")
+        return True
+    else:
+        print("⚠️ ALERTE : La clé publique a changé !")
+        print("🚨 Possible attaque Man-In-The-Middle (MITM).")
+
+        response = input("Voulez-vous accepter la nouvelle clé ? (oui/non) : ")
+
+        if response.lower() == "oui":
+            trusted_peers[peer_id] = received_pem
+            save_trusted_peers(trusted_peers)
+            print("🔄 Nouvelle clé enregistrée.")
+            return True
+        else:
+            print("❌ Connexion refusée.")
+            return False
