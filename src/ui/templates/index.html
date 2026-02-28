@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archipel - P2P Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> <!-- Placeholder for icons, replace if real is needed -->
+</head>
+<body>
+
+    <!-- Background Animation Elements -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="container glass-panel">
+        
+        <!-- Header Section -->
+        <header class="dashboard-header">
+            <div class="logo-area">
+                <div class="cube-spinner">
+                    <div class="face front"></div>
+                    <div class="face back"></div>
+                    <div class="face right"></div>
+                    <div class="face left"></div>
+                    <div class="face top"></div>
+                    <div class="face bottom"></div>
+                </div>
+                <h1>ARCHIPEL</h1>
+                <span class="badge">SECURE P2P</span>
+            </div>
+            <div class="node-info">
+                <div class="status-indicator">
+                    <span class="pulsing-dot" id="global-status-dot"></span>
+                    <span id="global-status-text">OFFLINE</span>
+                </div>
+                <div class="id-badge">
+                    <small>ID</small>
+                    <span id="local-node-id">ARCH-UNKNOWN</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Column: Controls & Peers -->
+            <div class="col-left">
+                
+                <!-- Server Controls Panel -->
+                <section class="panel control-panel">
+                    <h2><i class="fas fa-server"></i> Node Control</h2>
+                    <div class="form-group row">
+                        <div class="input-half">
+                            <label>TCP Port</label>
+                            <input type="number" id="node-port" value="5060">
+                        </div>
+                        <div class="input-half">
+                            <label>Shared Folder</label>
+                            <input type="text" id="node-folder" value="shared_files">
+                        </div>
+                    </div>
+                    <button id="btn-start" class="btn btn-primary btn-glow">LAUNCH P2P NODE</button>
+                    <p class="status-msg" id="msg-start"></p>
+                </section>
+
+                <!-- Peer List Panel -->
+                <section class="panel peers-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-network-wired"></i> Network Graph</h2>
+                        <button id="btn-refresh-peers" class="icon-btn" title="Refresh">↻</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="glass-table">
+                            <thead>
+                                <tr>
+                                    <th>Peer (IP:Port)</th>
+                                    <th>Status</th>
+                                    <th>Trust</th>
+                                </tr>
+                            </thead>
+                            <tbody id="peers-table-body">
+                                <tr><td colspan="3" class="text-center empty-state">No peers discovered yet</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- Right Column: Actions (Messaging & File Transfer) -->
+            <div class="col-right">
+                
+                <!-- Secure Messaging Panel -->
+                <section class="panel msg-panel">
+                    <h2><i class="fas fa-comment-shield"></i> E2E Encrypted Comm</h2>
+                    <div class="form-group">
+                        <label>Target Peer</label>
+                        <select id="msg-target">
+                            <option value="">-- Select a peer --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="msg-content" rows="3" placeholder="Enter secure message..."></textarea>
+                    </div>
+                    <button id="btn-send-msg" class="btn btn-secondary">SEND SECURE MESSAGE</button>
+                    <p class="status-msg" id="msg-result"></p>
+                </section>
+
+                <!-- File Transfer Panel -->
+                <section class="panel file-panel">
+                    <h2><i class="fas fa-file-export"></i> Chunk Transfer</h2>
+                    <div class="form-group">
+                        <label>File Path (Absolute or Relative)</label>
+                        <input type="text" id="file-path" placeholder="e.g. document.pdf">
+                    </div>
+                    <button id="btn-send-file" class="btn btn-secondary">SEND MANIFEST & FILE</button>
+                    <p class="status-msg" id="file-result"></p>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

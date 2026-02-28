@@ -2,6 +2,9 @@ import argparse
 import sys
 import os
 import socket
+import webbrowser
+import threading
+import time
 from tabulate import tabulate
 from colorama import Fore, Style, init
 
@@ -48,6 +51,10 @@ def main():
     # Commande : TRUST
     trust_p = subparsers.add_parser("trust", help="Approuver un pair dans le cercle de confiance")
     trust_p.add_argument("node_id", help="L'ID du nœud à approuver (ex: ARCH-PC1)")
+
+    # Commande : WEB
+    web_p = subparsers.add_parser("web", help="Lancer l'interface graphique (Dashboard) dans le navigateur")
+    web_p.add_argument("--port", type=int, default=8080, help="Port local du dashboard Web (défaut: 8080)")
 
     # Commande : STATUS
     subparsers.add_parser("status", help="Afficher l'état du système et le tableau de bord")
@@ -124,6 +131,22 @@ def main():
             print(f"{Fore.GREEN}✅ Le nœud {args.node_id} est maintenant APPROUVÉ.")
         else:
             print(f"{Fore.YELLOW}ℹ️ Le nœud {args.node_id} est déjà dans la liste de confiance.")
+
+    # 🌐 WEB : Lancement du dashboard Flask
+    elif args.command == "web":
+        from src.ui.app import run_flask
+        print(f"{Fore.CYAN}🌐 Initialisation du Hub Web ARCHIPEL...{Style.RESET_ALL}")
+        
+        # Ouvre le navigateur dans 1.5 secondes
+        def open_browser():
+            time.sleep(1.5)
+            webbrowser.open(f"http://127.0.0.1:{args.port}")
+            print(f"{Fore.GREEN}✓ Navigateur ouvert.{Style.RESET_ALL}")
+            
+        threading.Thread(target=open_browser, daemon=True).start()
+        
+        # Lance le serveur Web (bloquant)
+        run_flask(args.port)
 
     # 📊 STATUS : Dashboard complet
     elif args.command == "status":
